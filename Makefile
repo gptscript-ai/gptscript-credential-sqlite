@@ -1,3 +1,3 @@
 .PHONY: build
 build:
-	go build -o bin/gptscript-helper-sqlite .
+	go build -o bin/gptscript-credential-sqlite .
