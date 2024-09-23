@@ -1,0 +1,46 @@
+version: 2
+dist: releases
+snapshot:
+  version_template: '{{ trimprefix .Summary "v" }}'
+
+builds:
+  - id: default
+    binary: gptscript-credential-sqlite
+    env:
+      - CGO_ENABLED=0
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
+      - -X "github.com/gptscript-ai/gptscript/pkg/version.Tag=v{{ .Version }}"
+
+archives:
+  - id: default
+    builds:
+      - default
+    name_template: 'gptscript-credential-sqlite-v{{ .Version }}-{{ .Os }}-{{ .Arch }}'
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^Merge pull request"
+
+release:
+  github:
+    owner: gptscript-ai
+    name: gptscript-credential-sqlite
+  prerelease: auto
