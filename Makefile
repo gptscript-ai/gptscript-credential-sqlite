@@ -1,3 +1,3 @@
 .PHONY: build
 build:
-	go build -o bin/gptscript-credential-sqlite .
+	CGO_ENABLED=0 go build -o bin/gptscript-credential-sqlite -tags "${GO_TAGS}" -ldflags "-s -w" .
