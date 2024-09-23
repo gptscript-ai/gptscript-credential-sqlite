@@ -8,6 +8,9 @@ builds:
     binary: gptscript-credential-sqlite
     env:
       - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
     goarch:
       - amd64
       - arm64
@@ -16,16 +19,14 @@ builds:
     ldflags:
       - -s
       - -w
-      - -X "github.com/gptscript-ai/gptscript/pkg/version.Tag=v{{ .Version }}"
 
 archives:
-  - id: default
+  # Disable archives, we just want the binaries
+  - id: no_archives
+    format: binary
+    name_template: "gptscript-credential-sqlite-{{ .Os }}-{{ .Arch }}"
     builds:
       - default
-    name_template: 'gptscript-credential-sqlite-v{{ .Version }}-{{ .Os }}-{{ .Arch }}'
-    format_overrides:
-      - goos: windows
-        format: zip
 
 checksum:
   name_template: "checksums.txt"
