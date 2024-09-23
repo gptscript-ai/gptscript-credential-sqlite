@@ -6,7 +6,6 @@ require (
 	github.com/adrg/xdg v0.4.0
 	github.com/docker/docker-credential-helpers v0.8.2
 	github.com/glebarez/sqlite v1.11.0
-	github.com/gptscript-ai/gptscript v0.9.4
 	gorm.io/gorm v1.25.12
 	k8s.io/apimachinery v0.31.1
 	k8s.io/apiserver v0.31.1
@@ -20,7 +19,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/docker/cli v26.0.0+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

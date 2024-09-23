@@ -10,7 +10,6 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/docker/docker-credential-helpers/credentials"
 	"github.com/glebarez/sqlite"
-	"github.com/gptscript-ai/gptscript/pkg/config"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -32,20 +31,15 @@ var groupResource = schema.GroupResource{
 }
 
 type Sqlite struct {
-	cfg         *config.CLIConfig
 	db          *gorm.DB
 	transformer value.Transformer
 }
 
 func NewSqlite(ctx context.Context) (Sqlite, error) {
-	// Passing the empty string here will first look for the config location in GPTSCRIPT_CONFIG_FILE.
-	// If that is not set, it will look at xdg.ConfigFile("gptscript/config.json"), the default location.
-	cfg, err := config.ReadCLIConfig("")
-	if err != nil {
-		return Sqlite{}, fmt.Errorf("error reading CLI config: %w", err)
-	}
-
-	var dbPath string
+	var (
+		dbPath string
+		err    error
+	)
 	if os.Getenv("GPTSCRIPT_SQLITE_FILE") != "" {
 		dbPath = os.Getenv("GPTSCRIPT_SQLITE_FILE")
 	} else {
@@ -69,10 +63,7 @@ func NewSqlite(ctx context.Context) (Sqlite, error) {
 		return Sqlite{}, fmt.Errorf("failed to auto migrate GptscriptCredential: %w", err)
 	}
 
-	s := Sqlite{
-		cfg: cfg,
-		db:  db,
-	}
+	s := Sqlite{db: db}
 
 	encryptionConf, err := readEncryptionConfig(ctx)
 	if err != nil {
