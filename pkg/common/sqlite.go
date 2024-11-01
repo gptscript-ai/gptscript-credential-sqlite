@@ -21,7 +21,7 @@ func (u uid) AuthenticatedData() []byte {
 	return []byte(u)
 }
 
-var GroupResource = schema.GroupResource{
+var groupResource = schema.GroupResource{
 	Group:    "", // deliberately left empty
 	Resource: "credentials",
 }
@@ -40,9 +40,9 @@ func NewDatabase(ctx context.Context, db *gorm.DB) (Database, error) {
 	if err != nil {
 		return Database{}, fmt.Errorf("failed to read encryption config: %w", err)
 	} else if encryptionConf != nil {
-		transformer, exists := encryptionConf.Transformers[GroupResource]
+		transformer, exists := encryptionConf.Transformers[groupResource]
 		if !exists {
-			return Database{}, fmt.Errorf("failed to find encryption transformer for %s", GroupResource.String())
+			return Database{}, fmt.Errorf("failed to find encryption transformer for %s", groupResource.String())
 		}
 		return Database{
 			db:          db,
@@ -55,13 +55,6 @@ func NewDatabase(ctx context.Context, db *gorm.DB) (Database, error) {
 	}, nil
 }
 
-func NewDatabaseWithTransformer(db *gorm.DB, transformer value.Transformer) Database {
-	return Database{
-		db:          db,
-		transformer: transformer,
-	}
-}
-
 type GptscriptCredential struct {
 	ID        uint `gorm:"primary_key"`
 	CreatedAt time.Time
@@ -70,14 +63,14 @@ type GptscriptCredential struct {
 	Secret    string
 }
 
-func (s Database) Add(creds *credentials.Credentials) error {
+func (d Database) Add(creds *credentials.Credentials) error {
 	cred := GptscriptCredential{
 		ServerURL: creds.ServerURL,
 		Username:  creds.Username,
 		Secret:    creds.Secret,
 	}
 
-	cred, err := s.encryptCred(context.Background(), cred)
+	cred, err := d.encryptCred(context.Background(), cred)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt credential: %w", err)
 	}
@@ -86,48 +79,48 @@ func (s Database) Add(creds *credentials.Credentials) error {
 	// If it does, delete it first.
 	// This would normally happen during a credential refresh.
 	var existing GptscriptCredential
-	if err := s.db.Where("server_url = ?", cred.ServerURL).First(&existing).Error; err != nil {
+	if err := d.db.Where("server_url = ?", cred.ServerURL).First(&existing).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to get existing credential: %w", err)
 		}
 	} else {
-		if err := s.db.Delete(&existing).Error; err != nil {
+		if err := d.db.Delete(&existing).Error; err != nil {
 			return fmt.Errorf("failed to delete existing credential: %w", err)
 		}
 	}
 
-	if err := s.db.Create(&cred).Error; err != nil {
+	if err := d.db.Create(&cred).Error; err != nil {
 		return fmt.Errorf("failed to create credential: %w", err)
 	}
 
 	return nil
 }
 
-func (s Database) Delete(serverURL string) error {
+func (d Database) Delete(serverURL string) error {
 	var (
 		cred GptscriptCredential
 		err  error
 	)
-	if err = s.db.Where("server_url = ?", serverURL).Delete(&cred).Error; err != nil {
+	if err = d.db.Where("server_url = ?", serverURL).Delete(&cred).Error; err != nil {
 		return fmt.Errorf("failed to delete credential: %w", err)
 	}
 
 	return nil
 }
 
-func (s Database) Get(serverURL string) (string, string, error) {
+func (d Database) Get(serverURL string) (string, string, error) {
 	var (
 		cred GptscriptCredential
 		err  error
 	)
-	if err = s.db.Where("server_url = ?", serverURL).First(&cred).Error; err != nil {
+	if err = d.db.Where("server_url = ?", serverURL).First(&cred).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", "", nil
 		}
 		return "", "", fmt.Errorf("failed to get credential: %w", err)
 	}
 
-	cred, err = s.decryptCred(context.Background(), cred)
+	cred, err = d.decryptCred(context.Background(), cred)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to decrypt credential: %w", err)
 	}
@@ -135,12 +128,12 @@ func (s Database) Get(serverURL string) (string, string, error) {
 	return cred.Username, cred.Secret, nil
 }
 
-func (s Database) List() (map[string]string, error) {
+func (d Database) List() (map[string]string, error) {
 	var (
 		creds []GptscriptCredential
 		err   error
 	)
-	if err = s.db.Find(&creds).Error; err != nil {
+	if err = d.db.Find(&creds).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
