@@ -1,4 +1,4 @@
-package sqlite
+package common
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func readEncryptionConfig(ctx context.Context) (*encryptionconfig.EncryptionConf
 	return encryptionconfig.LoadEncryptionConfig(ctx, encryptionConfigPath, false, "gptscript")
 }
 
-func (s Sqlite) encryptCred(ctx context.Context, cred GptscriptCredential) (GptscriptCredential, error) {
+func (s Database) encryptCred(ctx context.Context, cred GptscriptCredential) (GptscriptCredential, error) {
 	if s.transformer == nil {
 		return cred, nil
 	}
@@ -46,7 +46,7 @@ func (s Sqlite) encryptCred(ctx context.Context, cred GptscriptCredential) (Gpts
 	return cred, nil
 }
 
-func (s Sqlite) decryptCred(ctx context.Context, cred GptscriptCredential) (GptscriptCredential, error) {
+func (s Database) decryptCred(ctx context.Context, cred GptscriptCredential) (GptscriptCredential, error) {
 	if s.transformer == nil {
 		return cred, nil
 	}

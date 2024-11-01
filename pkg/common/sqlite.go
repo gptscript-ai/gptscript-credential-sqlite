@@ -1,18 +1,13 @@
-package sqlite
+package common
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"time"
 
-	"github.com/adrg/xdg"
 	"github.com/docker/docker-credential-helpers/credentials"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/storage/value"
 )
@@ -26,58 +21,45 @@ func (u uid) AuthenticatedData() []byte {
 	return []byte(u)
 }
 
-var groupResource = schema.GroupResource{
+var GroupResource = schema.GroupResource{
 	Group:    "", // deliberately left empty
 	Resource: "credentials",
 }
 
-type Sqlite struct {
+type Database struct {
 	db          *gorm.DB
 	transformer value.Transformer
 }
 
-func NewSqlite(ctx context.Context) (Sqlite, error) {
-	var (
-		dbPath string
-		err    error
-	)
-	if os.Getenv("GPTSCRIPT_SQLITE_FILE") != "" {
-		dbPath = os.Getenv("GPTSCRIPT_SQLITE_FILE")
-	} else {
-		dbPath, err = xdg.ConfigFile("gptscript/credentials.db")
-		if err != nil {
-			return Sqlite{}, fmt.Errorf("failed to get credentials db path: %w", err)
-		}
-	}
-
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		Logger: logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
-			LogLevel:                  logger.Error,
-			IgnoreRecordNotFoundError: true,
-		}),
-	})
-	if err != nil {
-		return Sqlite{}, fmt.Errorf("failed to open database: %w", err)
-	}
-
+func NewDatabase(ctx context.Context, db *gorm.DB) (Database, error) {
 	if err := db.AutoMigrate(&GptscriptCredential{}); err != nil {
-		return Sqlite{}, fmt.Errorf("failed to auto migrate GptscriptCredential: %w", err)
+		return Database{}, fmt.Errorf("failed to auto migrate GptscriptCredential: %w", err)
 	}
-
-	s := Sqlite{db: db}
 
 	encryptionConf, err := readEncryptionConfig(ctx)
 	if err != nil {
-		return Sqlite{}, fmt.Errorf("failed to read encryption config: %w", err)
+		return Database{}, fmt.Errorf("failed to read encryption config: %w", err)
 	} else if encryptionConf != nil {
-		transformer, exists := encryptionConf.Transformers[groupResource]
+		transformer, exists := encryptionConf.Transformers[GroupResource]
 		if !exists {
-			return Sqlite{}, fmt.Errorf("failed to find encryption transformer for %s", groupResource.String())
+			return Database{}, fmt.Errorf("failed to find encryption transformer for %s", GroupResource.String())
 		}
-		s.transformer = transformer
+		return Database{
+			db:          db,
+			transformer: transformer,
+		}, nil
 	}
 
-	return s, nil
+	return Database{
+		db: db,
+	}, nil
+}
+
+func NewDatabaseWithTransformer(db *gorm.DB, transformer value.Transformer) Database {
+	return Database{
+		db:          db,
+		transformer: transformer,
+	}
 }
 
 type GptscriptCredential struct {
@@ -88,7 +70,7 @@ type GptscriptCredential struct {
 	Secret    string
 }
 
-func (s Sqlite) Add(creds *credentials.Credentials) error {
+func (s Database) Add(creds *credentials.Credentials) error {
 	cred := GptscriptCredential{
 		ServerURL: creds.ServerURL,
 		Username:  creds.Username,
@@ -121,7 +103,7 @@ func (s Sqlite) Add(creds *credentials.Credentials) error {
 	return nil
 }
 
-func (s Sqlite) Delete(serverURL string) error {
+func (s Database) Delete(serverURL string) error {
 	var (
 		cred GptscriptCredential
 		err  error
@@ -133,7 +115,7 @@ func (s Sqlite) Delete(serverURL string) error {
 	return nil
 }
 
-func (s Sqlite) Get(serverURL string) (string, string, error) {
+func (s Database) Get(serverURL string) (string, string, error) {
 	var (
 		cred GptscriptCredential
 		err  error
@@ -153,7 +135,7 @@ func (s Sqlite) Get(serverURL string) (string, string, error) {
 	return cred.Username, cred.Secret, nil
 }
 
-func (s Sqlite) List() (map[string]string, error) {
+func (s Database) List() (map[string]string, error) {
 	var (
 		creds []GptscriptCredential
 		err   error
