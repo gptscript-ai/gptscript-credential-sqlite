@@ -63,6 +63,6 @@ changelog:
 
 release:
   github:
-    owner: g-linville
-    name: gptscript-credential-sqlite
+    owner: gptscript-ai
+    name: gptscript-credential-database
   prerelease: auto
