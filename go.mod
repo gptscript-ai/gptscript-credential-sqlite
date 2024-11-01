@@ -6,6 +6,7 @@ require (
 	github.com/adrg/xdg v0.4.0
 	github.com/docker/docker-credential-helpers v0.8.2
 	github.com/glebarez/sqlite v1.11.0
+	gorm.io/driver/postgres v1.5.9
 	gorm.io/gorm v1.25.12
 	k8s.io/apimachinery v0.31.1
 	k8s.io/apiserver v0.31.1
@@ -84,7 +85,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/postgres v1.5.9 // indirect
 	k8s.io/api v0.31.1 // indirect
 	k8s.io/client-go v0.31.1 // indirect
 	k8s.io/component-base v0.31.1 // indirect
