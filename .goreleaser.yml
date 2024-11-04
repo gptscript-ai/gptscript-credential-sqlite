@@ -4,8 +4,25 @@ snapshot:
   version_template: '{{ trimprefix .Summary "v" }}'
 
 builds:
-  - id: default
+  - id: sqlite
+    main: ./sqlite
     binary: gptscript-credential-sqlite
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
+  - id: postgres
+    main: ./postgres
+    binary: gptscript-credential-postgres
     env:
       - CGO_ENABLED=0
     goos:
@@ -21,12 +38,16 @@ builds:
       - -w
 
 archives:
-  # Disable archives, we just want the binaries
-  - id: no_archives
+  - id: sqlite
     format: binary
     name_template: "gptscript-credential-sqlite-{{ .Os }}-{{ .Arch }}"
     builds:
-      - default
+      - sqlite
+  - id: postgres
+    format: binary
+    name_template: "gptscript-credential-postgres-{{ .Os }}-{{ .Arch }}"
+    builds:
+      - postgres
 
 checksum:
   name_template: "checksums.txt"
@@ -43,5 +64,5 @@ changelog:
 release:
   github:
     owner: gptscript-ai
-    name: gptscript-credential-sqlite
+    name: gptscript-credential-database
   prerelease: auto

@@ -1,4 +1,4 @@
-package sqlite
+package common
 
 import (
 	"context"
@@ -31,13 +31,13 @@ func readEncryptionConfig(ctx context.Context) (*encryptionconfig.EncryptionConf
 	return encryptionconfig.LoadEncryptionConfig(ctx, encryptionConfigPath, false, "gptscript")
 }
 
-func (s Sqlite) encryptCred(ctx context.Context, cred GptscriptCredential) (GptscriptCredential, error) {
-	if s.transformer == nil {
+func (d Database) encryptCred(ctx context.Context, cred GptscriptCredential) (GptscriptCredential, error) {
+	if d.transformer == nil {
 		return cred, nil
 	}
 
 	secretBytes := []byte(cred.Secret)
-	encryptedSecretBytes, err := s.transformer.TransformToStorage(ctx, secretBytes, uid(cred.ServerURL))
+	encryptedSecretBytes, err := d.transformer.TransformToStorage(ctx, secretBytes, uid(cred.ServerURL))
 	if err != nil {
 		return GptscriptCredential{}, fmt.Errorf("failed to encrypt secret: %w", err)
 	}
@@ -46,8 +46,8 @@ func (s Sqlite) encryptCred(ctx context.Context, cred GptscriptCredential) (Gpts
 	return cred, nil
 }
 
-func (s Sqlite) decryptCred(ctx context.Context, cred GptscriptCredential) (GptscriptCredential, error) {
-	if s.transformer == nil {
+func (d Database) decryptCred(ctx context.Context, cred GptscriptCredential) (GptscriptCredential, error) {
+	if d.transformer == nil {
 		return cred, nil
 	}
 
@@ -59,7 +59,7 @@ func (s Sqlite) decryptCred(ctx context.Context, cred GptscriptCredential) (Gpts
 				return GptscriptCredential{}, fmt.Errorf("failed to decode secret: %w", err)
 			}
 
-			secretBytes, _, err := s.transformer.TransformFromStorage(ctx, encryptedSecretBytes, uid(cred.ServerURL))
+			secretBytes, _, err := d.transformer.TransformFromStorage(ctx, encryptedSecretBytes, uid(cred.ServerURL))
 			if err != nil {
 				return GptscriptCredential{}, fmt.Errorf("failed to decrypt secret: %w", err)
 			}

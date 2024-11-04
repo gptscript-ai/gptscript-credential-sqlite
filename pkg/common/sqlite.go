@@ -1,18 +1,13 @@
-package sqlite
+package common
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"time"
 
-	"github.com/adrg/xdg"
 	"github.com/docker/docker-credential-helpers/credentials"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/storage/value"
 )
@@ -31,53 +26,33 @@ var groupResource = schema.GroupResource{
 	Resource: "credentials",
 }
 
-type Sqlite struct {
+type Database struct {
 	db          *gorm.DB
 	transformer value.Transformer
 }
 
-func NewSqlite(ctx context.Context) (Sqlite, error) {
-	var (
-		dbPath string
-		err    error
-	)
-	if os.Getenv("GPTSCRIPT_SQLITE_FILE") != "" {
-		dbPath = os.Getenv("GPTSCRIPT_SQLITE_FILE")
-	} else {
-		dbPath, err = xdg.ConfigFile("gptscript/credentials.db")
-		if err != nil {
-			return Sqlite{}, fmt.Errorf("failed to get credentials db path: %w", err)
-		}
-	}
-
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		Logger: logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
-			LogLevel:                  logger.Error,
-			IgnoreRecordNotFoundError: true,
-		}),
-	})
-	if err != nil {
-		return Sqlite{}, fmt.Errorf("failed to open database: %w", err)
-	}
-
+func NewDatabase(ctx context.Context, db *gorm.DB) (Database, error) {
 	if err := db.AutoMigrate(&GptscriptCredential{}); err != nil {
-		return Sqlite{}, fmt.Errorf("failed to auto migrate GptscriptCredential: %w", err)
+		return Database{}, fmt.Errorf("failed to auto migrate GptscriptCredential: %w", err)
 	}
-
-	s := Sqlite{db: db}
 
 	encryptionConf, err := readEncryptionConfig(ctx)
 	if err != nil {
-		return Sqlite{}, fmt.Errorf("failed to read encryption config: %w", err)
+		return Database{}, fmt.Errorf("failed to read encryption config: %w", err)
 	} else if encryptionConf != nil {
 		transformer, exists := encryptionConf.Transformers[groupResource]
 		if !exists {
-			return Sqlite{}, fmt.Errorf("failed to find encryption transformer for %s", groupResource.String())
+			return Database{}, fmt.Errorf("failed to find encryption transformer for %s", groupResource.String())
 		}
-		s.transformer = transformer
+		return Database{
+			db:          db,
+			transformer: transformer,
+		}, nil
 	}
 
-	return s, nil
+	return Database{
+		db: db,
+	}, nil
 }
 
 type GptscriptCredential struct {
@@ -88,14 +63,14 @@ type GptscriptCredential struct {
 	Secret    string
 }
 
-func (s Sqlite) Add(creds *credentials.Credentials) error {
+func (d Database) Add(creds *credentials.Credentials) error {
 	cred := GptscriptCredential{
 		ServerURL: creds.ServerURL,
 		Username:  creds.Username,
 		Secret:    creds.Secret,
 	}
 
-	cred, err := s.encryptCred(context.Background(), cred)
+	cred, err := d.encryptCred(context.Background(), cred)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt credential: %w", err)
 	}
@@ -104,48 +79,48 @@ func (s Sqlite) Add(creds *credentials.Credentials) error {
 	// If it does, delete it first.
 	// This would normally happen during a credential refresh.
 	var existing GptscriptCredential
-	if err := s.db.Where("server_url = ?", cred.ServerURL).First(&existing).Error; err != nil {
+	if err := d.db.Where("server_url = ?", cred.ServerURL).First(&existing).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to get existing credential: %w", err)
 		}
 	} else {
-		if err := s.db.Delete(&existing).Error; err != nil {
+		if err := d.db.Delete(&existing).Error; err != nil {
 			return fmt.Errorf("failed to delete existing credential: %w", err)
 		}
 	}
 
-	if err := s.db.Create(&cred).Error; err != nil {
+	if err := d.db.Create(&cred).Error; err != nil {
 		return fmt.Errorf("failed to create credential: %w", err)
 	}
 
 	return nil
 }
 
-func (s Sqlite) Delete(serverURL string) error {
+func (d Database) Delete(serverURL string) error {
 	var (
 		cred GptscriptCredential
 		err  error
 	)
-	if err = s.db.Where("server_url = ?", serverURL).Delete(&cred).Error; err != nil {
+	if err = d.db.Where("server_url = ?", serverURL).Delete(&cred).Error; err != nil {
 		return fmt.Errorf("failed to delete credential: %w", err)
 	}
 
 	return nil
 }
 
-func (s Sqlite) Get(serverURL string) (string, string, error) {
+func (d Database) Get(serverURL string) (string, string, error) {
 	var (
 		cred GptscriptCredential
 		err  error
 	)
-	if err = s.db.Where("server_url = ?", serverURL).First(&cred).Error; err != nil {
+	if err = d.db.Where("server_url = ?", serverURL).First(&cred).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", "", nil
 		}
 		return "", "", fmt.Errorf("failed to get credential: %w", err)
 	}
 
-	cred, err = s.decryptCred(context.Background(), cred)
+	cred, err = d.decryptCred(context.Background(), cred)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to decrypt credential: %w", err)
 	}
@@ -153,12 +128,12 @@ func (s Sqlite) Get(serverURL string) (string, string, error) {
 	return cred.Username, cred.Secret, nil
 }
 
-func (s Sqlite) List() (map[string]string, error) {
+func (d Database) List() (map[string]string, error) {
 	var (
 		creds []GptscriptCredential
 		err   error
 	)
-	if err = s.db.Find(&creds).Error; err != nil {
+	if err = d.db.Find(&creds).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}

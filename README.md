@@ -1,8 +1,11 @@
-# gptscript-credential-sqlite
+# gptscript-credential-database
 
-This is a GPTScript [credential helper](https://docs.gptscript.ai/credentials) for SQLite. When the `sqlite` credential store
-is configured for GPTScript, it will use this helper to store credentials in a local SQLite file, located in the configuration directory.
-By default, all credentials are stored unencrypted.
+This is a set of GPTScript [credential helpers](https://docs.gptscript.ai/credentials) for databases.
+Currently, SQLite and PostgreSQL are supported.
+To use SQLite, set your GPTScript configuration to use `sqlite` as the credential store.
+To use PostgreSQL, set your GPTScript configuration to use `postgres` as the credential store.
+
+By default, all credentials are stored **unencrypted**.
 
 Only macOS and Linux are supported.
 
@@ -44,5 +47,12 @@ resources:
 
 ## Environment Variables
 
-- `GPTSCRIPT_SQLITE_FILE` - can be used to override the path to the SQLite file.
+All helpers:
 - `GPTSCRIPT_ENCRYPTION_CONFIG_FILE` - can be used to override the path to the encryption configuration file.
+
+SQLite:
+- `GPTSCRIPT_SQLITE_FILE` - can be used to override the path to the SQLite file.
+
+PostgreSQL:
+- `GPTSCRIPT_POSTGRES_DSN` - (required) the DSN (connection string) for the PostgreSQL database.
+

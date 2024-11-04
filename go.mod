@@ -6,6 +6,7 @@ require (
 	github.com/adrg/xdg v0.4.0
 	github.com/docker/docker-credential-helpers v0.8.2
 	github.com/glebarez/sqlite v1.11.0
+	gorm.io/driver/postgres v1.5.9
 	gorm.io/gorm v1.25.12
 	k8s.io/apimachinery v0.31.1
 	k8s.io/apiserver v0.31.1
@@ -38,6 +39,10 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/jackc/pgx/v5 v5.5.5 // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
